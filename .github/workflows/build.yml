@@ -1,0 +1,70 @@
+name: Build and desktop checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+          - os: ubuntu-24.04
+            rid: linux-x64
+          - os: macos-15
+            rid: osx-arm64
+          - os: macos-15-intel
+            rid: osx-x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      MSBuildEnableWorkloadResolver: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Linux desktop dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb libx11-6 libice6 libsm6 libfontconfig1
+      - name: Build, check behavior and package
+        shell: pwsh
+        run: ./build.ps1 -RuntimeIdentifier '${{ matrix.rid }}'
+      - name: Desktop smoke check
+        shell: pwsh
+        run: |
+          $exe = './artifacts/${{ matrix.rid }}/SlickWatch'
+          if ($IsWindows) { $exe += '.exe' }
+          if ($IsMacOS) { $exe = './artifacts/${{ matrix.rid }}/SlickWatch.app/Contents/MacOS/SlickWatch' }
+          $data = Join-Path $PWD 'work/smoke'
+          if ($IsLinux) { & xvfb-run -a $exe --smoke-test --data-dir $data --capture-dir $data }
+          else { & $exe --smoke-test --data-dir $data --capture-dir $data | Out-Host }
+          if ($LASTEXITCODE -ne 0) { throw 'Desktop smoke check failed.' }
+          if (!(Test-Path "$data/smoke-report.json")) { throw 'Desktop check did not produce a report.' }
+          Get-Content "$data/smoke-report.json"
+      - name: Preserve Unix executable permissions
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          for dir in artifacts/*; do tar -czf "$dir.tar.gz" -C "$dir" .; done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-checks-${{ matrix.rid }}
+          path: work/smoke/
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Windows'
+        with:
+          name: SlickWatch-${{ matrix.rid }}
+          path: artifacts/${{ matrix.rid }}/
+      - uses: actions/upload-artifact@v4
+        if: runner.os != 'Windows'
+        with:
+          name: SlickWatch-${{ matrix.rid }}
+          path: artifacts/*.tar.gz

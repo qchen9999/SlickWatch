@@ -1,0 +1,16 @@
+<Application xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="SlickWatch.App.App" RequestedThemeVariant="Light">
+  <Application.Resources>
+    <SolidColorBrush x:Key="Muted">#6C7C71</SolidColorBrush>
+    <SolidColorBrush x:Key="Accent">#216851</SolidColorBrush>
+  </Application.Resources>
+  <Application.Styles>
+    <FluentTheme/>
+    <Style Selector="Window"><Setter Property="Background" Value="#F5F7F2"/><Setter Property="Foreground" Value="#243C2F"/><Setter Property="FontFamily" Value="avares://Avalonia.Fonts.Inter/Assets#Inter"/><Setter Property="FontSize" Value="13"/></Style>
+    <Style Selector="Button"><Setter Property="Padding" Value="14,10"/><Setter Property="CornerRadius" Value="7"/><Setter Property="Cursor" Value="Hand"/></Style>
+    <Style Selector="Button.primary"><Setter Property="Background" Value="#216851"/><Setter Property="Foreground" Value="White"/><Setter Property="BorderThickness" Value="0"/></Style>
+    <Style Selector="Button.nav"><Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#D5E5D9"/><Setter Property="HorizontalAlignment" Value="Stretch"/><Setter Property="HorizontalContentAlignment" Value="Left"/><Setter Property="Padding" Value="16,12"/><Setter Property="Margin" Value="0,2"/><Setter Property="BorderThickness" Value="0"/></Style>
+    <Style Selector="TextBox"><Setter Property="CornerRadius" Value="7"/><Setter Property="Padding" Value="12,9"/></Style>
+    <Style Selector="ComboBox"><Setter Property="HorizontalAlignment" Value="Stretch"/><Setter Property="CornerRadius" Value="7"/></Style>
+    <Style Selector="CheckBox"><Setter Property="Margin" Value="0,4"/></Style>
+  </Application.Styles>
+</Application>

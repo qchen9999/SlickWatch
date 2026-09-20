@@ -1,15 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows</TargetFramework>
-    <UseWPF>true</UseWPF>
-    <UseWindowsForms>true</UseWindowsForms>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>disable</ImplicitUsings>
     <AssemblyName>SlickWatch</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets/radar.ico</ApplicationIcon>
-    <Version>1.0.0</Version>
+    <Version>2.0.0</Version>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
     <Description>Slickdeals RSS monitor and desktop deal alerts</Description>
   </PropertyGroup>
-  <ItemGroup><ProjectReference Include="../SlickWatch.Core/SlickWatch.Core.csproj" /></ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../SlickWatch.Core/SlickWatch.Core.csproj" />
+    <ProjectReference Include="../SlickWatch.Platform/SlickWatch.Platform.csproj" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.2" />
+    <AvaloniaResource Include="Assets/**" />
+  </ItemGroup>
 </Project>

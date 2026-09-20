@@ -1,6 +1,8 @@
 using System.Security;
 using System.Xml;
 using SlickWatch.Core;
+using SlickWatch.Platform;
+using System.Xml.Linq;
 
 var tests = new List<(string Name, Func<Task> Run)>();
 void Test(string name, Action run) => tests.Add((name, () => { run(); return Task.CompletedTask; }));
@@ -222,6 +224,45 @@ AsyncTest("A failed page does not erase previous counts", async () =>
         Assert(state.Deals.Single().Comments == 40); Assert(state.Deals.Single().DetailError is not null);
     }
     finally { Directory.Delete(dir, true); }
+});
+
+Test("macOS startup arguments survive XML escaping and spaces", () =>
+{
+    string[] args = ["/Applications/Slick & Watch.app/Contents/MacOS/SlickWatch", "--tray"];
+    var document = XDocument.Parse(DesktopIntegration.LaunchAgent(args));
+    Assert(document.Descendants("array").Single().Elements("string").Select(e => e.Value).SequenceEqual(args));
+    Assert(document.Descendants("true").Count() == 1);
+});
+Test("Linux startup quoting protects field codes, quotes and shell characters", () =>
+{
+    Assert(DesktopIntegration.DesktopArgument("/home/qi/My App/SlickWatch") == "\"/home/qi/My App/SlickWatch\"");
+    Assert(DesktopIntegration.DesktopArgument("50%") == "\"50%%\"");
+    Assert(DesktopIntegration.DesktopArgument("$x") == "\"\\\\$x\"");
+    Assert(DesktopIntegration.DesktopArgument("a\"b") == "\"a\\\\\"b\"");
+    try { DesktopIntegration.DesktopArgument("bad\nExec=other"); throw new Exception("Accepted an injected line"); }
+    catch (ArgumentException) { }
+    Assert(DesktopIntegration.LinuxDesktopEntry(["/opt/SlickWatch", "--tray"]).Contains("Exec=\"/opt/SlickWatch\" \"--tray\"\n"));
+});
+Test("Single instance activation reaches the first process profile", () =>
+{
+    string dir = Temp();
+    try
+    {
+        using var first = new SingleInstance(dir);
+        using var signal = new ManualResetEventSlim();
+        first.Listen(signal.Set);
+        using var second = new SingleInstance(dir);
+        Assert(first.IsPrimary && !second.IsPrimary);
+        Assert(second.ActivateExistingAsync().GetAwaiter().GetResult());
+        Assert(signal.Wait(TimeSpan.FromSeconds(3)), "Activation was not delivered");
+    }
+    finally { Directory.Delete(dir, true); }
+});
+Test("Legacy Windows preference files retain startup and saved deal data", () =>
+{
+    const string json = """{"Version":1,"Settings":{"StartWithWindows":true,"ThumbThreshold":30,"CommentThreshold":50},"Deals":[{"Id":"123456","Saved":true}],"AcknowledgedDeals":["123456"]}""";
+    var state = System.Text.Json.JsonSerializer.Deserialize<WatchState>(json)!;
+    Assert(state.Settings.StartWithWindows && state.Deals.Single().Saved && state.AcknowledgedDeals.Contains("123456"));
 });
 
 int failed = 0;

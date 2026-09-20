@@ -1,6 +1,6 @@
 using System.ComponentModel;
 using System.Collections.ObjectModel;
-using System.Windows.Threading;
+using Avalonia.Controls.Primitives;
 
 namespace SlickWatch.App;
 
@@ -12,13 +12,16 @@ public partial class MainWindow : Window
     private int _visibleLimit = 60;
     private readonly ObservableCollection<Deal> _displayedDeals = [];
     private readonly DispatcherTimer _clock = new() { Interval = TimeSpan.FromSeconds(15) };
-    public static readonly DependencyProperty CardWidthProperty = DependencyProperty.Register(nameof(CardWidth), typeof(double), typeof(MainWindow), new PropertyMetadata(290.0));
+    public static readonly StyledProperty<double> CardWidthProperty = AvaloniaProperty.Register<MainWindow, double>(nameof(CardWidth), 290.0);
     public double CardWidth { get => (double)GetValue(CardWidthProperty); set => SetValue(CardWidthProperty, value); }
-    public MainWindow(App app)
+    public MainWindow()
     {
-        _app = app;
+        _app = (App)Application.Current!;
         InitializeComponent();
         DealItems.ItemsSource = _displayedDeals;
+        if (OperatingSystem.IsLinux()) TrayHint.Text = "Your radar keeps running when minimized. Use Exit SlickWatch to stop it.";
+        PropertyChanged += (_, e) => { if (e.Property == WindowStateProperty && WindowState == WindowState.Minimized && _app.CanHideToTray) Hide(); };
+        Closed += (_, _) => { _clock.Stop(); _app.Watcher.Changed -= UpdateView; };
         _ready = true;
         _app.Watcher.Changed += UpdateView;
         _clock.Tick += (_, _) => UpdateStatus();
@@ -26,20 +29,41 @@ public partial class MainWindow : Window
         UpdateView();
     }
     public void Reveal() { Show(); WindowState = WindowState.Normal; Activate(); }
-    public void ShowMatches() { _page = "matches"; SearchBox.Clear(); SourceFilter.SelectedIndex = 0; UpdateView(); Reveal(); }
-    private void Window_Closing(object? sender, CancelEventArgs e)
+    internal async Task<bool> CheckFiltersAsync()
+    {
+        int total = _app.Watcher.State.Deals.Count;
+        SearchBox.Text = "SlickWatch-no-such-deal-709158";
+        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+        bool empty = _displayedDeals.Count == 0 && EmptyState.IsVisible;
+        SearchBox.Text = "";
+        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+        SourceFilter.SelectedIndex = 1;
+        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+        bool source = _displayedDeals.All(d => d.Sources.Contains("Frontpage"));
+        SourceFilter.SelectedIndex = 0;
+        _page = "saved"; UpdateView();
+        bool saved = _displayedDeals.All(d => d.Saved);
+        _page = "all"; _visibleLimit = 120; UpdateView();
+        bool paging = _displayedDeals.Count == Math.Min(total, 120);
+        SortBox.SelectedIndex = 1;
+        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+        bool sort = _displayedDeals.SequenceEqual(_displayedDeals.OrderBy(d => d.Expired).ThenByDescending(d => d.Comments ?? -1).ThenByDescending(d => d.Score));
+        SortBox.SelectedIndex = 0; _visibleLimit = 60; UpdateView();
+        return empty && source && saved && paging && sort;
+    }
+    public void ShowMatches() { _page = "matches"; SearchBox.Text = ""; SourceFilter.SelectedIndex = 0; UpdateView(); Reveal(); }
+    private void Window_Closing(object? sender, WindowClosingEventArgs e)
     {
         if (_app.Quitting) return;
         e.Cancel = true;
-        Hide();
+        if (_app.CanHideToTray) Hide(); else WindowState = WindowState.Minimized;
     }
-    private void Window_StateChanged(object? sender, EventArgs e) { if (WindowState == WindowState.Minimized) Hide(); }
     private void Navigate_Click(object sender, RoutedEventArgs e)
     {
-        _page = (string)((Button)sender).Tag;
+        _page = (string)((Button)sender).Tag!;
         _visibleLimit = 60;
         UpdateView();
-        DealsScroll.ScrollToTop();
+        DealsScroll.Offset = default;
     }
     private void Filter_Changed(object sender, RoutedEventArgs e) { if (_ready) { _visibleLimit = 60; UpdateView(); } }
     private void LoadMore_Click(object sender, RoutedEventArgs e) { _visibleLimit += 60; UpdateView(); }
@@ -59,7 +83,7 @@ public partial class MainWindow : Window
         RuleSummary.Text = $">{settings.ThumbThreshold} thumbs OR >{settings.CommentThreshold} comments";
         SourceSummary.Text = string.Join(" + ", new[] { settings.Frontpage ? "Frontpage" : null, settings.Popular ? "Popular" : null }.Where(x => x is not null));
         foreach (var button in new[] { AllNav, MatchesNav, SavedNav, AlertsNav })
-            button.Background = (string)button.Tag == _page ? new SolidColorBrush(Color.FromRgb(51, 81, 65)) : Brushes.Transparent;
+            button.Background = (string)button.Tag! == _page ? new SolidColorBrush(Color.FromRgb(51, 81, 65)) : Brushes.Transparent;
         PageTitle.Text = _page switch { "matches" => "Worth a closer look", "saved" => "Your saved finds", "alerts" => "Your alert history", _ => "Your deal radar" };
         PageSubtitle.Text = _page switch
         {
@@ -68,10 +92,10 @@ public partial class MainWindow : Window
             "alerts" => "New qualifying deals, remembered across app restarts.",
             _ => "Fresh finds from Slickdeals, with the signal turned up."
         };
-        string search = SearchBox.Text.Trim();
+        string search = (SearchBox.Text ?? "").Trim();
         bool history = _page == "alerts";
-        DealsScroll.Visibility = history ? Visibility.Collapsed : Visibility.Visible;
-        AlertsScroll.Visibility = history ? Visibility.Visible : Visibility.Collapsed;
+        DealsScroll.IsVisible = !history;
+        AlertsScroll.IsVisible = history;
         SourceFilter.IsEnabled = SortBox.IsEnabled = !history;
         int count;
         if (history)
@@ -109,11 +133,11 @@ public partial class MainWindow : Window
                 else if (current != index) _displayedDeals.Move(current, index);
                 visible[index].NotifyUpdated();
             }
-            LoadMoreButton.Visibility = count > _visibleLimit ? Visibility.Visible : Visibility.Collapsed;
+            LoadMoreButton.IsVisible = count > _visibleLimit;
         }
-        ResultsLabel.Text = $"{count:N0} {(history ? "alerts" : "deals")}  ·  {(_page == "matches" ? "Your thresholds" : history ? "Newest first" : ((ComboBoxItem)SortBox.SelectedItem).Content)}";
+        ResultsLabel.Text = $"{count:N0} {(history ? "alerts" : "deals")}  ·  {(_page == "matches" ? "Your thresholds" : history ? "Newest first" : (SortBox.SelectedItem as ComboBoxItem)?.Content)}";
         if (!history && count > _visibleLimit) ResultsLabel.Text += $"  ·  showing {_visibleLimit}";
-        EmptyState.Visibility = count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        EmptyState.IsVisible = count == 0;
         (EmptyTitle.Text, EmptyDescription.Text) = _page switch
         {
             "saved" => ("Keep the good ones close", "Click ☆ Save on a deal to add it to your shortlist."),
@@ -133,35 +157,35 @@ public partial class MainWindow : Window
         WatchStatus.Text = watcher.Paused ? "Ⅱ  Paused" : watcher.Busy ? "◌  Checking" : watcher.Error is not null ? "◷  Retrying" : "●  Watching";
         NextCheck.Text = watcher.Paused ? "Resume whenever you're ready" : watcher.NextPollAt is { } next ? $"Next check {next.ToLocalTime():h:mm tt}" : "First scan loads quietly";
         StatusText.Text = watcher.Status + (watcher.State.LastPollAt is { } last ? $"  ·  Last feed check {last.ToLocalTime():h:mm tt}" : "");
-        ErrorBanner.Visibility = watcher.Error is null ? Visibility.Collapsed : Visibility.Visible;
+        ErrorBanner.IsVisible = watcher.Error is not null;
         ErrorText.Text = watcher.Error;
     }
     private async void Refresh_Click(object sender, RoutedEventArgs e) => await _app.RefreshAsync();
     private void Pause_Click(object sender, RoutedEventArgs e) => _app.Watcher.TogglePaused();
     private void TestAlert_Click(object sender, RoutedEventArgs e) => _app.ShowTestAlert();
-    private void Settings_Click(object sender, RoutedEventArgs e) => new SettingsWindow(_app) { Owner = this }.ShowDialog();
-    private void OpenDeal_Click(object sender, RoutedEventArgs e) => _app.OpenUrl(((Deal)((Button)sender).Tag).Url);
-    private void OpenAlert_Click(object sender, RoutedEventArgs e) => _app.OpenUrl(((DealAlert)((Button)sender).Tag).Url);
+    private async void Settings_Click(object sender, RoutedEventArgs e) => await new SettingsWindow(_app).ShowDialog(this);
+    private async void Exit_Click(object sender, RoutedEventArgs e) => await _app.QuitAsync();
+    private void OpenDeal_Click(object sender, RoutedEventArgs e) => _app.OpenUrl(((Deal)((Button)sender).Tag!).Url);
+    private void OpenAlert_Click(object sender, RoutedEventArgs e) => _app.OpenUrl(((DealAlert)((Button)sender).Tag!).Url);
     private async void SaveDeal_Click(object sender, RoutedEventArgs e)
     {
-        var deal = (Deal)((Button)sender).Tag;
+        var deal = (Deal)((Button)sender).Tag!;
         deal.Saved = !deal.Saved;
         UpdateView();
         await _app.SaveAsync();
     }
-    private void Details_Click(object sender, RoutedEventArgs e)
+    private async void Details_Click(object sender, RoutedEventArgs e)
     {
-        var deal = (Deal)((Button)sender).Tag;
+        var deal = (Deal)((Button)sender).Tag!;
         var panel = new StackPanel { Margin = new Thickness(28) };
-        panel.Children.Add(new TextBlock { Text = deal.Title, FontSize = 24, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
-        panel.Children.Add(new TextBlock { Text = $"{deal.ScoreLabel} thumbs  ·  {deal.CommentsLabel} comments  ·  {deal.SourceLabel}", Margin = new Thickness(0, 15, 0, 8), Foreground = (Brush)FindResource("Accent") });
-        panel.Children.Add(new TextBlock { Text = $"{deal.DateKind}: {deal.DateLabel}\nCategory: {deal.Category}\nPosted by: {deal.Author}\n{deal.MetricsTooltip}", Foreground = (Brush)FindResource("Muted"), TextWrapping = TextWrapping.Wrap, FontSize = 12, Margin = new Thickness(0, 0, 0, 20) });
+        panel.Children.Add(new TextBlock { Text = deal.Title, FontSize = 24, FontWeight = FontWeight.SemiBold, TextWrapping = TextWrapping.Wrap });
+        panel.Children.Add(new TextBlock { Text = $"{deal.ScoreLabel} thumbs  ·  {deal.CommentsLabel} comments  ·  {deal.SourceLabel}", Margin = new Thickness(0, 15, 0, 8), Foreground = Brush.Parse("#216851") });
+        panel.Children.Add(new TextBlock { Text = $"{deal.DateKind}: {deal.DateLabel}\nCategory: {deal.Category}\nPosted by: {deal.Author}\n{deal.MetricsTooltip}", Foreground = Brush.Parse("#6C7C71"), TextWrapping = TextWrapping.Wrap, FontSize = 12, Margin = new Thickness(0, 0, 0, 20) });
         panel.Children.Add(new TextBox { Text = deal.Description, IsReadOnly = true, TextWrapping = TextWrapping.Wrap, BorderThickness = new Thickness(0), Background = Brushes.Transparent });
-        var open = new Button { Content = "Open on Slickdeals ↗", Style = (Style)FindResource("PrimaryButton"), Margin = new Thickness(0, 20, 0, 10) };
+        var open = new Button { Content = "Open on Slickdeals ↗", Classes = { "primary" }, Margin = new Thickness(0, 20, 0, 10) };
         open.Click += (_, _) => _app.OpenUrl(deal.Url);
         panel.Children.Add(open);
         panel.Children.Add(new TextBox { Text = deal.Url, IsReadOnly = true, FontSize = 11, TextWrapping = TextWrapping.Wrap });
-        new Window { Title = "Deal details — SlickWatch", Owner = this, Width = 720, Height = 730, WindowStartupLocation = WindowStartupLocation.CenterOwner, Content = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto } }.ShowDialog();
+        await new Window { Title = "Deal details — SlickWatch", Width = 720, Height = 730, WindowStartupLocation = WindowStartupLocation.CenterOwner, Content = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto } }.ShowDialog(this);
     }
-    private void Image_Failed(object sender, ExceptionRoutedEventArgs e) => ((Image)sender).Visibility = Visibility.Collapsed;
 }

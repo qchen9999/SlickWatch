@@ -1,4 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework></PropertyGroup>
-  <ItemGroup><ProjectReference Include="../SlickWatch.Core/SlickWatch.Core.csproj" /></ItemGroup>
+  <ItemGroup><ProjectReference Include="../SlickWatch.Core/SlickWatch.Core.csproj" /><ProjectReference Include="../SlickWatch.Platform/SlickWatch.Platform.csproj" /></ItemGroup>
 </Project>
