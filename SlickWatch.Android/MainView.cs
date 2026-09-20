@@ -213,7 +213,8 @@ public sealed class MainView : UserControl
                 Notifications = notifications.IsChecked == true
             };
             updated.Validate();
-            await PhoneServices.UpdateAsync(s => { s.Settings = updated; s.Mobile.BackgroundChecks = background.IsChecked == true; s.Mobile.NextCheckAt = null; });
+            bool backgroundEnabled = background.IsChecked == true;
+            await PhoneServices.UpdateAsync(s => { s.Settings = updated; s.Mobile.BackgroundChecks = backgroundEnabled; s.Mobile.NextCheckAt = null; });
             settingsOpen = false; Reload();
         }));
         panel.Children.Add(Text("SlickWatch Android preview · 0.1.0\nSaved only on this device. No account or server required. Not affiliated with Slickdeals.", 11));
