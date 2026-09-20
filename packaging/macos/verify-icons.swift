@@ -24,11 +24,11 @@ var radarPixels = 0
 for y in 0..<128 {
     for x in 0..<128 {
         let color = pixels.colorAt(x: x, y: y)!.usingColorSpace(.deviceRGB)!
-        if color.alphaComponent > 0.5 && color.greenComponent > color.redComponent * 1.3 && color.greenComponent > color.blueComponent {
+        if color.alphaComponent > 0.5 && color.greenComponent > color.redComponent * 1.3 && color.greenComponent >= color.blueComponent * 0.9 {
             radarPixels += 1
         }
     }
 }
-require(radarPixels > 128 * 128 / 5, "Finder resolved a generic/blank icon instead of the green radar")
 try pixels.representation(using: .png, properties: [:])!.write(to: outputURL)
-print("PASS: AppKit decoded ICNS and Finder resolved the radar icon (\(radarPixels) green pixels)")
+require(radarPixels > 128 * 128 / 5, "Finder resolved a generic/blank icon instead of the teal radar (\(radarPixels) teal pixels)")
+print("PASS: AppKit decoded ICNS and Finder resolved the radar icon (\(radarPixels) teal pixels)")

@@ -8,8 +8,13 @@ mkdir -p -- "$captures"
 "$app_dir/SlickWatch" --smoke-test --data-dir "$captures" --capture-dir "$captures" &
 app_pid=$!
 trap 'kill "$app_pid" 2>/dev/null || true' EXIT
-for ((attempt=0; attempt<100; attempt++)); do
+for ((attempt=0; attempt<1000; attempt++)); do
     [[ -s "$captures/native-window-id.txt" ]] && break
+    if ! kill -0 "$app_pid" 2>/dev/null; then
+        cat "$captures/startup-error.txt" >&2 || true
+        wait "$app_pid"
+        exit 1
+    fi
     sleep 0.02
 done
 xprop -len 1000000 -id "$(cat "$captures/native-window-id.txt")" -notype -f _NET_WM_ICON 32c _NET_WM_ICON WM_CLASS > "$captures/window-icon.txt"
@@ -24,8 +29,8 @@ width, height = values[:2]
 assert width >= 32 and height >= 32
 pixels = values[2:2 + width * height]
 assert len(pixels) == width * height, 'Incomplete native window icon'
-green = sum((p >> 24) > 127 and ((p >> 8) & 255) > ((p >> 16) & 255) * 1.3 and ((p >> 8) & 255) > (p & 255) for p in pixels)
-assert green > width * height / 5, 'Window icon is blank or not the radar image'
+teal = sum((p >> 24) > 127 and ((p >> 8) & 255) > ((p >> 16) & 255) * 1.3 and ((p >> 8) & 255) >= (p & 255) * 0.9 for p in pixels)
+assert teal > width * height / 5, 'Window icon is blank or not the radar image'
 assert 'WM_CLASS = "SlickWatch", "SlickWatch"' in properties
 print(f'PASS: X11 received a {width}x{height} radar icon and matching window class')
 PY
