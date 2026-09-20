@@ -15,6 +15,18 @@ public sealed class MainActivity : AvaloniaMainActivity
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         base.OnCreate(savedInstanceState);
+#if DEBUG
+        // Emulator verification: let WorkManager recreate the process without an activity.
+        // This entry point is absent from release APKs.
+        if (Intent?.GetBooleanExtra("slickwatch.verify-worker", false) == true)
+        {
+            var request = new AndroidX.Work.OneTimeWorkRequest.Builder(typeof(DealWorker))
+                .SetInitialDelay(20, Java.Util.Concurrent.TimeUnit.Seconds!)!.Build();
+            AndroidX.Work.WorkManager.GetInstance(this).Enqueue(request);
+            Finish();
+            return;
+        }
+#endif
         OpenNotification(Intent);
     }
     protected override void OnNewIntent(Intent? intent)

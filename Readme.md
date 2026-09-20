@@ -120,6 +120,10 @@ The Android project pins the Lifecycle package family to the version required by
 
 ## Verification
 
+The Android preview is exercised on an Android 16.1 x64 emulator, including live feeds/images, notification permission, saved deals, pause/resume, settings, process recreation, and a WorkManager run that recreates the process and posts a native notification with no activity open. Physical ARM64 device testing is still needed. Shared tests cover mobile scheduling, retry delays across restarts, alert deduplication, and serialized state changes.
+
+Debug APKs have an emulator verification hook: launch the main activity with boolean intent extra `slickwatch.verify-worker=true` to enqueue a one-time worker after 20 seconds and immediately finish the activity. Kill the background process (without force-stop) before that delay to exercise a cold worker start. This uses the normal polling rules and data, so the next check must be due. The hook is excluded from Release APKs; normal background work remains periodic with a minimum interval of 15 minutes.
+
 GitHub Actions builds the Windows, Linux and macOS packages, runs behavior checks, and launches the desktop app for offline smoke checks. Reports and screenshots are uploaded as separate artifacts. Checks exercise search, feed filters, saved views, sorting, pagination, preferences, popups and dashboard close behavior. Mac checks decode the packaged ICNS file and verify that Finder's native icon lookup returns the radar artwork. Linux checks inspect the real X11 window icon and window class, validate the installed desktop entry, and launch it from a path with spaces and special characters. Linux CI uses a virtual X display, so tray/menu interaction still needs a real desktop check.
 
 Mac smoke checks also invoke the native red close button and Cocoa's Dock reopen callback, verifying that the existing window reappears across repeated cycles. The menu bar's **Open SlickWatch** callback is checked separately. The native test bridge is built only for CI checks and is excluded from downloadable app packages.
