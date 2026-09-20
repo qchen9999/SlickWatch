@@ -41,7 +41,7 @@ test_root=$(mktemp -d)
 trap 'rm -rf -- "$test_root"' EXIT
 test_app="$test_root/Space \"quote\" \$cash %percent \`tick\` \\slash"
 mkdir -p -- "$test_app"
-cp -- "$app_dir/install-desktop.sh" "$app_dir/com.qchen9999.SlickWatch.desktop" "$app_dir/SlickWatch.png" "$test_app/"
+cp -- "$app_dir/install-desktop.sh" "$app_dir/launch.sh" "$app_dir/com.qchen9999.SlickWatch.desktop" "$app_dir/SlickWatch.png" "$test_app/"
 cat > "$test_app/SlickWatch" <<'SH'
 #!/usr/bin/env bash
 printf 'launched\n' > "$XDG_DATA_HOME/launch-ok"

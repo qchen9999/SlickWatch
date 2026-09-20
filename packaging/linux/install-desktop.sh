@@ -12,7 +12,7 @@ fi
 
 # Quote the Exec argument, then escape the desktop-entry string layer. A percent
 # is a desktop field code even inside quotes; never evaluate the resulting text.
-executable="$app_dir/SlickWatch"
+executable="$app_dir/launch.sh"
 escaped=${executable//\\/\\\\}
 escaped=${escaped//\"/\\\"}
 escaped=${escaped//\`/\\\`}
@@ -27,7 +27,7 @@ mkdir -p -- "$(dirname -- "$launcher")" "$icons"
 install -m 644 -- "$app_dir/SlickWatch.png" "$icons/com.qchen9999.SlickWatch.png"
 {
     cat -- "$app_dir/com.qchen9999.SlickWatch.desktop"
-    printf 'Exec="%s"\n' "$escaped"
+    printf 'Exec=/bin/sh "%s"\n' "$escaped"
 } > "$launcher"
 chmod 644 -- "$launcher"
 if command -v update-desktop-database >/dev/null 2>&1; then

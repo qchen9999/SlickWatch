@@ -4,6 +4,6 @@ Name=SlickWatch
 Comment=Slickdeals deal alerts
 Icon=com.qchen9999.SlickWatch
 Terminal=false
-Categories=Network;Utility;
+Categories=Network;
 StartupWMClass=SlickWatch
 StartupNotify=false

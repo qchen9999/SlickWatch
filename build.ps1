@@ -32,7 +32,7 @@ try {
         }
     }
     elseif ($RuntimeIdentifier.StartsWith('linux-')) {
-        foreach ($name in @('SlickWatch.png', 'com.qchen9999.SlickWatch.desktop', 'install-desktop.sh')) {
+        foreach ($name in @('SlickWatch.png', 'com.qchen9999.SlickWatch.desktop', 'install-desktop.sh', 'launch.sh')) {
             Copy-Item -LiteralPath (Join-Path $PSScriptRoot "packaging/linux/$name") -Destination $publishDirectory
         }
         if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Linux)) {

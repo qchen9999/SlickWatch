@@ -81,7 +81,7 @@ Without PowerShell, build directly:
 dotnet run --project SlickWatch.Tests -c Release
 dotnet publish SlickWatch.App -c Release -r linux-x64 --self-contained true -o artifacts/linux-x64
 chmod +x artifacts/linux-x64/SlickWatch
-cp packaging/linux/{SlickWatch.png,com.qchen9999.SlickWatch.desktop,install-desktop.sh} artifacts/linux-x64/
+cp packaging/linux/{SlickWatch.png,com.qchen9999.SlickWatch.desktop,install-desktop.sh,launch.sh} artifacts/linux-x64/
 chmod +x artifacts/linux-x64/install-desktop.sh
 ```
 
