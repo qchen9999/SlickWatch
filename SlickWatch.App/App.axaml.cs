@@ -1,6 +1,7 @@
 using Avalonia.Markup.Xaml;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Avalonia.VisualTree;
 using SlickWatch.Platform;
 using System.Text.Json;
 
@@ -200,7 +201,29 @@ public partial class App : Application
         Capture(settings, Path.Combine(captures, "preferences.png")); settings.Close();
         ShowTestAlert(); await Task.Delay(400);
         bool popup = _popup?.IsVisible == true;
-        if (_popup is not null) Capture(_popup, Path.Combine(captures, "notification.png"));
+        if (_popup is not null)
+        {
+            Capture(_popup, Path.Combine(captures, "notification.png"));
+            var buttons = _popup.GetVisualDescendants().OfType<Button>().ToArray();
+            try
+            {
+                // Capture Fluent's template states, which can override the buttons' own brushes.
+                foreach (string state in new[] { ":pointerover", ":pressed" })
+                {
+                    foreach (var button in buttons) ((IPseudoClasses)button.Classes).Set(state, true);
+                    await Task.Delay(150);
+                    Capture(_popup, Path.Combine(captures, $"notification-{state[1..]}.png"));
+                }
+            }
+            finally
+            {
+                foreach (var button in buttons)
+                {
+                    ((IPseudoClasses)button.Classes).Set(":pressed", false);
+                    ((IPseudoClasses)button.Classes).Set(":pointerover", false);
+                }
+            }
+        }
         Dashboard.Close();
         await Task.Delay(150);
         // A virtual X display without a window manager may ignore minimization. The
