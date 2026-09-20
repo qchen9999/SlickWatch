@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>SlickWatch</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets/radar.ico</ApplicationIcon>
+    <Version>1.0.0</Version>
+    <Description>Slickdeals RSS monitor and desktop deal alerts</Description>
+  </PropertyGroup>
+  <ItemGroup><ProjectReference Include="../SlickWatch.Core/SlickWatch.Core.csproj" /></ItemGroup>
+</Project>

@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="SlickWatch.Core/SlickWatch.Core.csproj" />
+  <Project Path="SlickWatch.App/SlickWatch.App.csproj" />
+  <Project Path="SlickWatch.Tests/SlickWatch.Tests.csproj" />
+</Solution>

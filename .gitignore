@@ -1,0 +1,18 @@
+**/bin/
+**/obj/
+.vs/
+*.user
+
+# Published builds and local development output
+/app/
+/artifacts/
+/work/
+*.zip
+*.log
+
+# Local preferences, collected deals, and credentials
+state.json
+state.json.*
+.env
+.env.*
+!.env.example
