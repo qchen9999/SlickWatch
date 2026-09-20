@@ -31,7 +31,7 @@ jobs:
           global-json-file: global.json
       - name: Linux desktop dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y xvfb libx11-6 libice6 libsm6 libfontconfig1
+        run: sudo apt-get update && sudo apt-get install -y xvfb x11-utils desktop-file-utils libglib2.0-bin libx11-6 libice6 libsm6 libfontconfig1
       - name: Build, check behavior and package
         shell: pwsh
         run: ./build.ps1 -RuntimeIdentifier '${{ matrix.rid }}'
@@ -42,11 +42,20 @@ jobs:
           if ($IsWindows) { $exe += '.exe' }
           if ($IsMacOS) { $exe = './artifacts/${{ matrix.rid }}/SlickWatch.app/Contents/MacOS/SlickWatch' }
           $data = Join-Path $PWD 'work/smoke'
-          if ($IsLinux) { & xvfb-run -a $exe --smoke-test --data-dir $data --capture-dir $data }
+          if ($IsLinux) { & xvfb-run -a bash ./packaging/linux/verify-desktop.sh "./artifacts/${{ matrix.rid }}" $data }
           else { & $exe --smoke-test --data-dir $data --capture-dir $data | Out-Host }
           if ($LASTEXITCODE -ne 0) { throw 'Desktop smoke check failed.' }
           if (!(Test-Path "$data/smoke-report.json")) { throw 'Desktop check did not produce a report.' }
           Get-Content "$data/smoke-report.json"
+      - name: Check macOS bundle icon using AppKit and Finder
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          app="artifacts/${{ matrix.rid }}/SlickWatch.app"
+          plutil -lint "$app/Contents/Info.plist"
+          iconutil -c iconset "$app/Contents/Resources/SlickWatch.icns" -o work/smoke/SlickWatch.iconset
+          swift packaging/macos/verify-icons.swift "$app" work/smoke/finder-icon.png
+          codesign --verify --deep --strict "$app"
       - name: Preserve Unix executable permissions
         if: runner.os != 'Windows'
         shell: bash

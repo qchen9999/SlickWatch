@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=SlickWatch
+Comment=Slickdeals deal alerts
+Icon=com.qchen9999.SlickWatch
+Terminal=false
+Categories=Network;Utility;
+StartupWMClass=SlickWatch
+StartupNotify=false

@@ -13,6 +13,10 @@ Build the app using the instructions below. Published builds include the .NET ru
 | macOS Intel | `artifacts/osx-x64/SlickWatch.app` | Same application; separate Intel build. |
 | Linux x64 | `artifacts/linux-x64/SlickWatch` | Closing minimizes to the task switcher; the tray icon appears on desktops that support it. |
 
+Download packaged builds from [GitHub Releases](https://github.com/qchen9999/SlickWatch/releases/latest). On macOS, quit the old version, extract the archive and replace the complete `SlickWatch.app` in Applications. The app includes its Finder/Dock icon. These test builds are ad-hoc signed, not notarized: if macOS blocks opening, use **System Settings → Privacy & Security → Open Anyway** for the copy you downloaded from this repository ([Apple's instructions](https://support.apple.com/en-us/102445)).
+
+On Linux, extract the archive into a permanent folder, then run `./install-desktop.sh` from that folder to add SlickWatch with its icon to your applications menu. This installs a launcher and icon for your user only; it does not copy the app or enable startup at sign-in. Run the script again if you move the folder. After upgrading, re-save Preferences with startup enabled if you want to refresh an older sign-in entry's icon. An existing pinned shortcut may need to be removed and pinned again after replacing the app.
+
 - Browse deal cards with images, descriptions, URLs, posting dates, thumb scores, comments and a rank within the current view.
 - Use **Matches**, **Saved deals**, search, feed filters and score/date/comment sorting.
 - **View deal** opens your default browser. **Read description** shows the full RSS description, count timestamps, category, author and a copyable URL.
@@ -77,13 +81,17 @@ Without PowerShell, build directly:
 dotnet run --project SlickWatch.Tests -c Release
 dotnet publish SlickWatch.App -c Release -r linux-x64 --self-contained true -o artifacts/linux-x64
 chmod +x artifacts/linux-x64/SlickWatch
+cp packaging/linux/{SlickWatch.png,com.qchen9999.SlickWatch.desktop,install-desktop.sh} artifacts/linux-x64/
+chmod +x artifacts/linux-x64/install-desktop.sh
 ```
 
 Open `SlickWatch.slnx` in a compatible IDE. The build script disables workload resolution to avoid an unrelated installer problem on the original development machine; desktop builds do not need mobile workloads.
 
 ## Verification
 
-GitHub Actions builds the Windows, Linux and macOS packages, runs behavior checks, and launches the desktop app for offline smoke checks. Reports and screenshots are uploaded as separate artifacts. Checks exercise search, feed filters, saved views, sorting, pagination, preferences, popups and dashboard close behavior. Linux CI uses a virtual X display, so tray/menu interaction still needs a real desktop check.
+GitHub Actions builds the Windows, Linux and macOS packages, runs behavior checks, and launches the desktop app for offline smoke checks. Reports and screenshots are uploaded as separate artifacts. Checks exercise search, feed filters, saved views, sorting, pagination, preferences, popups and dashboard close behavior. Mac checks decode the packaged ICNS file and verify that Finder's native icon lookup returns the radar artwork. Linux checks inspect the real X11 window icon and window class, validate the installed desktop entry, and launch it from a path with spaces and special characters. Linux CI uses a virtual X display, so tray/menu interaction still needs a real desktop check.
+
+The Windows ICO is the source artwork. `packaging/export-icons.ps1` converts it to the checked-in PNG and ICNS formats on Windows; normal builds need no image tools. macOS and Linux load PNG for the window/tray icon. The Mac bundle icon is copied before signing, and Linux packages include the PNG, desktop-entry template and installer.
 
 To run checks separately:
 

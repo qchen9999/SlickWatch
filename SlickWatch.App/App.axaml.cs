@@ -97,7 +97,8 @@ public partial class App : Application
     }
     private void CreateTray()
     {
-        using var stream = AssetLoader.Open(new Uri("avares://SlickWatch/Assets/radar.ico"));
+        string iconAsset = OperatingSystem.IsWindows() ? "radar.ico" : "radar.png";
+        using var stream = AssetLoader.Open(new Uri($"avares://SlickWatch/Assets/{iconAsset}"));
         var icon = new WindowIcon(stream);
         var menu = new NativeMenu();
         NativeMenuItem Item(string text, Action action)
@@ -176,6 +177,8 @@ public partial class App : Application
     private async Task SmokeAsync(string captures, bool live)
     {
         Directory.CreateDirectory(captures);
+        if (OperatingSystem.IsLinux())
+            await File.WriteAllTextAsync(Path.Combine(captures, "native-window-id.txt"), "0x" + Dashboard.TryGetPlatformHandle()!.Handle.ToString("X"));
         if (live) await Watcher.PollAsync(_shutdown.Token);
         else await SaveAsync();
         await Task.Delay(live ? 2500 : 600);

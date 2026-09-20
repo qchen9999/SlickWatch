@@ -243,6 +243,15 @@ Test("Linux startup quoting protects field codes, quotes and shell characters", 
     catch (ArgumentException) { }
     Assert(DesktopIntegration.LinuxDesktopEntry(["/opt/SlickWatch", "--tray"]).Contains("Exec=\"/opt/SlickWatch\" \"--tray\"\n"));
 });
+Test("Linux autostart carries an icon path without desktop-entry injection", () =>
+{
+    string entry = DesktopIntegration.LinuxDesktopEntry(["/home/qi/My App/SlickWatch", "--tray"], "/home/qi/My App/SlickWatch.png");
+    Assert(entry.Contains("\nIcon=/home/qi/My App/SlickWatch.png\n"));
+    Assert(entry.Contains("\nStartupWMClass=SlickWatch\n"));
+    Assert(DesktopIntegration.LinuxDesktopEntry(["/app"], "/a\\b/icon.png").Contains("Icon=/a\\\\b/icon.png\n"));
+    try { DesktopIntegration.LinuxDesktopEntry(["/app"], "/icon.png\nExec=other"); throw new Exception("Accepted an injected icon line"); }
+    catch (ArgumentException) { }
+});
 Test("Single instance activation reaches the first process profile", () =>
 {
     string dir = Temp();

@@ -27,7 +27,8 @@ public static class DesktopIntegration
         string file = AutoStartFile;
         if (!enabled) { if (File.Exists(file)) File.Delete(file); return; }
         Directory.CreateDirectory(Path.GetDirectoryName(file)!);
-        File.WriteAllText(file, OperatingSystem.IsMacOS() ? LaunchAgent(arguments) : LinuxDesktopEntry(arguments));
+        string icon = Path.Combine(Path.GetDirectoryName(managedAssembly ?? executable)!, "SlickWatch.png");
+        File.WriteAllText(file, OperatingSystem.IsMacOS() ? LaunchAgent(arguments) : LinuxDesktopEntry(arguments, icon));
     }
 
     public static string LaunchAgent(IEnumerable<string> arguments) => new XDocument(
@@ -38,9 +39,16 @@ public static class DesktopIntegration
             new XElement("key", "ProgramArguments"), new XElement("array", arguments.Select(a => new XElement("string", a))),
             new XElement("key", "RunAtLoad"), new XElement("true")))).ToString();
 
-    public static string LinuxDesktopEntry(IEnumerable<string> arguments) =>
+    public static string LinuxDesktopEntry(IEnumerable<string> arguments, string icon = AppId) =>
         "[Desktop Entry]\nType=Application\nName=SlickWatch\nComment=Slickdeals deal alerts\nExec=" +
-        string.Join(" ", arguments.Select(DesktopArgument)) + "\nTerminal=false\nStartupNotify=false\nX-GNOME-Autostart-enabled=true\n";
+        string.Join(" ", arguments.Select(DesktopArgument)) + "\nIcon=" + DesktopString(icon) +
+        "\nStartupWMClass=SlickWatch\nTerminal=false\nStartupNotify=false\nX-GNOME-Autostart-enabled=true\n";
+
+    private static string DesktopString(string value)
+    {
+        if (value.Contains('\n') || value.Contains('\r') || value.Contains('\0')) throw new ArgumentException("Invalid desktop entry value.");
+        return value.Replace("\\", "\\\\").Replace("\t", "\\t");
+    }
 
     public static string DesktopArgument(string value)
     {

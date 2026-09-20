@@ -22,14 +22,23 @@ try {
     if ($RuntimeIdentifier.StartsWith('osx-')) {
         $contentsDirectory = Split-Path $publishDirectory
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'packaging/macos/Info.plist') -Destination (Join-Path $contentsDirectory 'Info.plist')
+        $resources = Join-Path $contentsDirectory 'Resources'
+        New-Item -ItemType Directory -Force -Path $resources | Out-Null
+        Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'packaging/macos/SlickWatch.icns') -Destination $resources
         if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::OSX)) {
             & chmod +x (Join-Path $publishDirectory 'SlickWatch')
             & codesign --force --deep --sign - (Join-Path $OutputDirectory 'SlickWatch.app')
             if ($LASTEXITCODE -ne 0) { throw 'Local ad-hoc macOS signing failed.' }
         }
     }
-    elseif ($RuntimeIdentifier.StartsWith('linux-') -and [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Linux)) {
-        & chmod +x (Join-Path $publishDirectory 'SlickWatch')
+    elseif ($RuntimeIdentifier.StartsWith('linux-')) {
+        foreach ($name in @('SlickWatch.png', 'com.qchen9999.SlickWatch.desktop', 'install-desktop.sh')) {
+            Copy-Item -LiteralPath (Join-Path $PSScriptRoot "packaging/linux/$name") -Destination $publishDirectory
+        }
+        if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Linux)) {
+            & chmod +x (Join-Path $publishDirectory 'SlickWatch') (Join-Path $publishDirectory 'install-desktop.sh')
+            if ($LASTEXITCODE -ne 0) { throw 'Setting Linux executable permissions failed.' }
+        }
     }
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Readme.md') -Destination $OutputDirectory
     Write-Host "Ready: $OutputDirectory"
