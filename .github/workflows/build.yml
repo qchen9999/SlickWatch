@@ -42,6 +42,12 @@ jobs:
           if ($IsWindows) { $exe += '.exe' }
           if ($IsMacOS) { $exe = './artifacts/${{ matrix.rid }}/SlickWatch.app/Contents/MacOS/SlickWatch' }
           $data = Join-Path $PWD 'work/smoke'
+          if ($IsMacOS) {
+            New-Item -ItemType Directory -Force -Path $data | Out-Null
+            $env:SLICKWATCH_MAC_REOPEN_CHECK = Join-Path $data 'libReopenCheck.dylib'
+            & clang -dynamiclib -fobjc-arc -framework Cocoa ./packaging/macos/reopen-check.m -o $env:SLICKWATCH_MAC_REOPEN_CHECK
+            if ($LASTEXITCODE -ne 0) { throw 'Building the native Mac reopen check failed.' }
+          }
           if ($IsLinux) { & xvfb-run -a bash ./packaging/linux/verify-desktop.sh "./artifacts/${{ matrix.rid }}" $data }
           else { & $exe --smoke-test --data-dir $data --capture-dir $data | Out-Host }
           if ($LASTEXITCODE -ne 0) { throw 'Desktop smoke check failed.' }

@@ -195,6 +195,8 @@ public partial class App : Application
         // fallback must remain present in the task switcher even in that environment.
         bool keepsRunning = !Quitting && (CanHideToTray ? !Dashboard.IsVisible : Dashboard.IsVisible && Dashboard.ShowInTaskbar);
         Dashboard.Reveal();
+        if (OperatingSystem.IsMacOS() && Environment.GetEnvironmentVariable("SLICKWATCH_MAC_REOPEN_CHECK") is { Length: > 0 } checkLibrary)
+            await Testing.MacReopenCheck.RunAsync(Dashboard, checkLibrary, captures);
         var report = new { Platform = System.Runtime.InteropServices.RuntimeInformation.OSDescription, Framework = "Avalonia", LiveFeed = live, Deals = Watcher.State.Deals.Count, Matches = Watcher.State.Deals.Count(d => AlertRules.Matches(d, Watcher.State.Settings)), FirstRunAlerts = Watcher.State.Alerts.Count, TrayCreated = _tray?.IsVisible, Filters = filters, Popup = popup, CloseKeepsRunning = keepsRunning, Watcher.Error, SavedState = File.Exists(Path.Combine(Store.DirectoryPath, "state.json")) };
         await File.WriteAllTextAsync(Path.Combine(captures, "smoke-report.json"), JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));
         if (!filters || !popup || !keepsRunning) throw new InvalidOperationException("Desktop smoke checks failed.");
