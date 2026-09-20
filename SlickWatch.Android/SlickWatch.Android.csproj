@@ -12,6 +12,8 @@
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <PublishTrimmed>false</PublishTrimmed>
     <RunAOTCompilation>false</RunAOTCompilation>
+    <!-- Keep dynamic JNI callback registration for these untrimmed preview builds. -->
+    <AndroidEnableMarshalMethods>false</AndroidEnableMarshalMethods>
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
   </PropertyGroup>
   <ItemGroup>

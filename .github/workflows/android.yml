@@ -47,3 +47,31 @@ jobs:
           name: SlickWatch-android-arm64
           path: artifacts/SlickWatch-android-arm64.apk
           if-no-files-found: error
+      - name: Build Release APK for emulator verification
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force .local/android-smoke | Out-Null
+          [IO.File]::WriteAllText("$PWD/.local/android-smoke/password.txt", 'android-test-only')
+          & keytool -genkeypair -keystore .local/android-smoke/test.jks -storepass:file .local/android-smoke/password.txt -keypass:file .local/android-smoke/password.txt -alias slickwatch -keyalg RSA -validity 30 -dname 'CN=SlickWatch CI'
+          if ($LASTEXITCODE -ne 0) { throw 'Test key generation failed' }
+          ./build-android.ps1 -RuntimeIdentifier android-x64 -KeyStore .local/android-smoke/test.jks -PasswordFile .local/android-smoke/password.txt
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Verify Release startup and reopening
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          script: python3 packaging/android/verify-release.py artifacts/SlickWatch-android-x64.apk
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Android-release-checks
+          path: work/android-smoke/
+          if-no-files-found: warn
