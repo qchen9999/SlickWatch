@@ -2,6 +2,13 @@
   <Grid>
     <Grid.ColumnDefinitions><ColumnDefinition Width="208"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
     <Border Background="#142F27">
+      <Border.Resources>
+        <!-- Keep Fluent's template hover/pressed states readable on this dark pane. -->
+        <SolidColorBrush x:Key="ButtonBackgroundPointerOver">#426653</SolidColorBrush>
+        <SolidColorBrush x:Key="ButtonForegroundPointerOver">#FFFFFF</SolidColorBrush>
+        <SolidColorBrush x:Key="ButtonBackgroundPressed">#294B3B</SolidColorBrush>
+        <SolidColorBrush x:Key="ButtonForegroundPressed">#FFFFFF</SolidColorBrush>
+      </Border.Resources>
       <Grid Margin="18,30,18,20">
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <StackPanel Margin="12,0,0,38"><TextBlock Text="◉  slickwatch" Foreground="White" FontSize="24" FontWeight="SemiBold"/><TextBlock Text="GOOD DEALS. LESS NOISE." FontSize="10" Foreground="#9ABAAF" Margin="2,9,0,0"/></StackPanel>
