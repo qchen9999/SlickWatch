@@ -2,6 +2,21 @@
 
 An Avalonia / .NET tray app for Windows, macOS and Linux that watches Slickdeals Frontpage + Popular RSS feeds and notifies you when a deal's **thumb score is greater than 30 OR its comment count is greater than 50**. Both thresholds are adjustable.
 
+An Android preview is also available. It runs independently on your phone, with no server, account, or desktop companion required.
+
+## Android preview
+
+Download `SlickWatch-android-arm64.apk` from the [Android preview release](https://github.com/qchen9999/SlickWatch/releases/tag/android-v0.1.0). It supports **64-bit ARM devices running Android 8.0 or later**. Open the APK on your phone and allow installation from the app you used to download it when Android asks. Future APKs use the same signing key and can be installed over this preview to retain your data.
+
+- Browse phone-sized cards with images, descriptions, dates, scores and comments. Search, sort, save deals, and switch between All deals, Matches, Saved and Alerts.
+- In **Settings**, use **Notification permission** to allow Android notifications, then **Send test notification**. These are native notifications in the notification shade; Android controls sound and Do Not Disturb through the notification channel settings.
+- Foreground checks use your chosen interval (five minutes by default, with four deal-page checks per cycle on Android). Background checks use Android WorkManager, at **a minimum of 15 minutes**, and require a network connection. Battery management, Doze and device-specific restrictions can delay checks. This preview does not promise immediate alerts. See [Android's scheduling documentation](https://developer.android.com/develop/background-work/background-tasks/persistent/getting-started/define-work).
+- **Pause** stops foreground checks and cancels scheduled background work. Turning off **Check in the background** still allows checks while the app is open. Android force-stop prevents work until you open SlickWatch again.
+- The first scan loads existing deals quietly. Later qualifying deals alert once; tapping a single-deal notification opens its Slickdeals page. Notification history remains available when notifications are blocked.
+- Settings, saved deals and history stay in the app's private storage on this device. No syncing or cloud backup is enabled. Uninstalling or clearing app data removes them. The Android preview currently has no JSON export.
+
+Android uses the same feed parser, strict thresholds, throttling and deduplication rules as the desktop app. One process-wide coordinator serializes the foreground screen and background worker; the schedule and retry delay survive process restarts. A background run is limited to three minutes, so a slow connection can complete only part of a page-check rotation.
+
 ## Start
 
 Build the app using the instructions below. Published builds include the .NET runtime; keep the entire published folder together in a permanent location if you enable startup at sign-in. Generated executables and local deal history are excluded from Git.
@@ -86,6 +101,22 @@ chmod +x artifacts/linux-x64/install-desktop.sh
 ```
 
 Open `SlickWatch.slnx` in a compatible IDE. The build script disables workload resolution to avoid an unrelated installer problem on the original development machine; desktop builds do not need mobile workloads.
+
+### Build Android
+
+`SlickWatch.Android` is a separate host referencing `SlickWatch.Core`; it is deliberately outside the desktop solution so desktop contributors do not need the Android workload. Install the pinned .NET SDK, its Android workload, Android SDK platform 36/build tools, and JDK 21. Set `ANDROID_HOME` and `JAVA_HOME` to their installation directories. Then run:
+
+```powershell
+$env:MSBuildEnableWorkloadResolver = 'true'
+dotnet workload install android --skip-manifest-update
+dotnet build SlickWatch.Android -t:InstallAndroidDependencies -p:MSBuildEnableWorkloadResolver=true -p:AcceptAndroidSdkLicenses=True
+./build-android.ps1 -Configuration Debug
+./build-android.ps1 -Configuration Debug -RuntimeIdentifier android-x64 # emulator
+```
+
+The APK appears under `artifacts/SlickWatch-android-arm64.apk` (or `android-x64`). Use `-Dotnet`, `-AndroidSdkDirectory` and `-JavaSdkDirectory` to supply explicit tool paths. Release builds require `-KeyStore <file> -PasswordFile <file>`, using alias `slickwatch`. Never commit signing keys or passwords. The Android workflow reads `ANDROID_KEYSTORE_BASE64` and `ANDROID_KEYSTORE_PASSWORD` from repository secrets; pull requests build with a development key. Back up the release signing key securely to preserve upgrade compatibility.
+
+The Android project pins the Lifecycle package family to the version required by WorkManager. It uses Avalonia 12's application host and activity view factory so recreating an activity does not reuse a detached desktop window. Native Android services supply scheduling, notifications, permission requests, and browser launching.
 
 ## Verification
 

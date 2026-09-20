@@ -22,6 +22,7 @@ public sealed class StateStore(string directory)
                 var state = JsonSerializer.Deserialize<WatchState>(File.ReadAllText(candidate), Options)
                     ?? throw new JsonException("Empty saved state.");
                 state.Settings.Validate();
+                state.Mobile ??= new();
                 if (state.Version != 1 || state.Deals is null || state.Alerts is null || state.AcknowledgedDeals is null || state.InitializedFeeds is null)
                     throw new JsonException("Unrecognized saved state.");
                 state.Deals = state.Deals.Where(d => FeedParser.IsDealUrl(d.Url) && !string.IsNullOrWhiteSpace(d.Id))

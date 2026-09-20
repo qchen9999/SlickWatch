@@ -1,0 +1,49 @@
+name: Android build
+on:
+  push:
+    branches: [main, feature/android]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      MSBuildEnableWorkloadResolver: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install Android workload
+        run: dotnet workload install android --skip-manifest-update
+      - name: Check shared behavior
+        run: dotnet run --project SlickWatch.Tests -c Release
+      - name: Install SDK dependencies
+        run: dotnet build SlickWatch.Android -t:InstallAndroidDependencies -p:MSBuildEnableWorkloadResolver=true -p:AndroidSdkDirectory="$ANDROID_HOME" -p:JavaSdkDirectory="$JAVA_HOME" -p:AcceptAndroidSdkLicenses=True
+      - name: Build debug APK for pull requests
+        if: github.event_name == 'pull_request'
+        shell: pwsh
+        run: ./build-android.ps1 -Configuration Debug
+      - name: Build signed preview APK
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          New-Item -ItemType Directory -Force .local/android-signing | Out-Null
+          [IO.File]::WriteAllBytes("$PWD/.local/android-signing/release.jks", [Convert]::FromBase64String($env:ANDROID_KEYSTORE_BASE64))
+          [IO.File]::WriteAllText("$PWD/.local/android-signing/password.txt", $env:ANDROID_KEYSTORE_PASSWORD)
+          ./build-android.ps1 -KeyStore .local/android-signing/release.jks -PasswordFile .local/android-signing/password.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SlickWatch-android-arm64
+          path: artifacts/SlickWatch-android-arm64.apk
+          if-no-files-found: error

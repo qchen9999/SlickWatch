@@ -274,6 +274,93 @@ Test("Legacy Windows preference files retain startup and saved deal data", () =>
     Assert(state.Settings.StartWithWindows && state.Deals.Single().Saved && state.AcknowledgedDeals.Contains("123456"));
 });
 
+AsyncTest("Mobile polling shares its schedule and alert ledger across restarts", async () =>
+{
+    string dir = Temp();
+    try
+    {
+        var store = new StateStore(dir);
+        await store.SaveAsync(new WatchState { Settings = new() { Popular = false } });
+        int score = 10;
+        var client = new FakeClient((url, _) => Task.FromResult(new FeedResponse(url.Contains("newsearch") ? Rss(score) : Page(score, 10))));
+        var monitor = new MobileMonitor(store, client);
+        var first = await monitor.PollAsync();
+        Assert(first.Alerts.Count == 0 && first.State.Deals.Count == 1);
+        int calls = client.Calls;
+        var restart = new MobileMonitor(store, client);
+        await restart.PollAsync();
+        Assert(client.Calls == calls, "Restart ignored the persisted schedule");
+        score = 45;
+        var next = await restart.PollAsync(force: true);
+        Assert(next.Alerts.Count == 1);
+        Assert((await new MobileMonitor(store, client).PollAsync(force: true)).Alerts.Count == 0);
+        Assert(MobileMonitor.BackgroundMinutes(new WatchSettings { PollMinutes = 5 }) == 15);
+    }
+    finally { Directory.Delete(dir, true); }
+});
+AsyncTest("Mobile settings and saves cannot overwrite an in-flight refresh", async () =>
+{
+    string dir = Temp();
+    try
+    {
+        var store = new StateStore(dir);
+        await store.SaveAsync(new WatchState { Settings = new() { Popular = false } });
+        var entered = new TaskCompletionSource();
+        var release = new TaskCompletionSource();
+        var client = new FakeClient(async (url, token) =>
+        {
+            entered.TrySetResult(); await release.Task.WaitAsync(token);
+            return new FeedResponse(url.Contains("newsearch") ? Rss() : Page(10, 10));
+        });
+        var monitor = new MobileMonitor(store, client);
+        var poll = monitor.PollAsync(); await entered.Task;
+        var mutation = monitor.UpdateAsync(s => { s.Mobile.Paused = true; s.Deals.Single().Saved = true; });
+        release.SetResult(); await poll; await mutation;
+        var loaded = await monitor.ReadAsync();
+        Assert(loaded.Mobile.Paused && loaded.Deals.Single().Saved);
+        int calls = client.Calls;
+        await new MobileMonitor(store, client).PollAsync(force: true);
+        Assert(client.Calls == calls, "A paused app performed network requests");
+        loaded.Deals.Clear();
+        Assert((await monitor.ReadAsync()).Deals.Count == 1, "UI snapshot changed stored state");
+    }
+    finally { Directory.Delete(dir, true); }
+});
+AsyncTest("Mobile server backoff survives process restart and manual refresh", async () =>
+{
+    string dir = Temp();
+    try
+    {
+        var store = new StateStore(dir);
+        var client = new FakeClient((_, _) => throw new FeedRequestException("Slow down", DateTimeOffset.UtcNow.AddMinutes(40)));
+        await new MobileMonitor(store, client).PollAsync();
+        await new MobileMonitor(store, client).PollAsync(force: true);
+        Assert(client.Calls == 1);
+        Assert(store.Load().Mobile.RetryNotBefore > DateTimeOffset.UtcNow);
+    }
+    finally { Directory.Delete(dir, true); }
+});
+
+AsyncTest("Disabling mobile background checks still permits foreground checks", async () =>
+{
+    string dir = Temp();
+    try
+    {
+        var store = new StateStore(dir);
+        var client = new FakeClient((_, _) => Task.FromResult(new FeedResponse("<rss><channel/></rss>")));
+        var monitor = new MobileMonitor(store, client);
+        await monitor.UpdateAsync(s => { s.Mobile.BackgroundChecks = false; s.Settings.Popular = false; });
+        await monitor.PollAsync(background: true);
+        Assert(client.Calls == 0);
+        await monitor.PollAsync();
+        Assert(client.Calls == 1);
+        try { await monitor.UpdateAsync(s => { s.Settings.PollMinutes = 1; }); throw new Exception("Accepted invalid settings"); }
+        catch (ArgumentException) { }
+        Assert((await monitor.ReadAsync()).Settings.PollMinutes == 5);
+    }
+    finally { Directory.Delete(dir, true); }
+});
+
 int failed = 0;
 foreach (var test in tests)
 {

@@ -3,6 +3,6 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <MSBuildEnableWorkloadResolver>false</MSBuildEnableWorkloadResolver>
+    <MSBuildEnableWorkloadResolver Condition="'$(MSBuildEnableWorkloadResolver)' == ''">false</MSBuildEnableWorkloadResolver>
   </PropertyGroup>
 </Project>

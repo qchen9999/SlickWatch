@@ -16,3 +16,6 @@ state.json.*
 .env
 .env.*
 !.env.example
+/.local/
+*.jks
+*.keystore

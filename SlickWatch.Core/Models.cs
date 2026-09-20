@@ -64,10 +64,19 @@ public sealed class Deal : INotifyPropertyChanged
 
 public sealed record DealAlert(string DealId, string Title, string Url, string Reason, DateTimeOffset CreatedAt);
 public sealed record PageMetrics(int? Score, int? Comments, DateTimeOffset? PostedAt, bool? Expired, string? Category);
+public sealed class MobilePreferences
+{
+    public bool Paused { get; set; }
+    public bool BackgroundChecks { get; set; } = true;
+    public DateTimeOffset? NextCheckAt { get; set; }
+    public DateTimeOffset? RetryNotBefore { get; set; }
+    public string? LastError { get; set; }
+}
 public sealed class WatchState
 {
     public int Version { get; set; } = 1;
     public WatchSettings Settings { get; set; } = new();
+    public MobilePreferences Mobile { get; set; } = new();
     public List<Deal> Deals { get; set; } = [];
     public HashSet<string> InitializedFeeds { get; set; } = [];
     public HashSet<string> AcknowledgedDeals { get; set; } = [];
