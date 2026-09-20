@@ -30,10 +30,22 @@ public partial class App : Application
     public override void OnFrameworkInitializationCompleted()
     {
         Desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        if (this.TryGetFeature<IActivatableLifetime>() is { } activation)
+            activation.Activated += OnApplicationActivated;
         Desktop.ShutdownRequested += (_, e) => { if (!Quitting) { e.Cancel = true; _ = QuitAsync(); } };
         Desktop.Exit += (_, _) => { _shutdown.Cancel(); _tray?.Dispose(); _client?.Dispose(); _instance?.Dispose(); };
         Dispatcher.UIThread.Post(() => StartAsync(Desktop.Args ?? []));
         base.OnFrameworkInitializationCompleted();
+    }
+    private void OnApplicationActivated(object? sender, ActivatedEventArgs e)
+    {
+        // Dock clicks reopen the existing macOS process; they do not start a
+        // second instance or raise TrayIcon.Clicked.
+        if (e.Kind != ActivationKind.Reopen) return;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (!Quitting && Dashboard is { } window) window.Reveal();
+        });
     }
     private async void StartAsync(string[] args)
     {
@@ -196,7 +208,7 @@ public partial class App : Application
         bool keepsRunning = !Quitting && (CanHideToTray ? !Dashboard.IsVisible : Dashboard.IsVisible && Dashboard.ShowInTaskbar);
         Dashboard.Reveal();
         if (OperatingSystem.IsMacOS() && Environment.GetEnvironmentVariable("SLICKWATCH_MAC_REOPEN_CHECK") is { Length: > 0 } checkLibrary)
-            await Testing.MacReopenCheck.RunAsync(Dashboard, checkLibrary, captures);
+            await Testing.MacReopenCheck.RunAsync(Dashboard, _tray!, checkLibrary, captures);
         var report = new { Platform = System.Runtime.InteropServices.RuntimeInformation.OSDescription, Framework = "Avalonia", LiveFeed = live, Deals = Watcher.State.Deals.Count, Matches = Watcher.State.Deals.Count(d => AlertRules.Matches(d, Watcher.State.Settings)), FirstRunAlerts = Watcher.State.Alerts.Count, TrayCreated = _tray?.IsVisible, Filters = filters, Popup = popup, CloseKeepsRunning = keepsRunning, Watcher.Error, SavedState = File.Exists(Path.Combine(Store.DirectoryPath, "state.json")) };
         await File.WriteAllTextAsync(Path.Combine(captures, "smoke-report.json"), JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));
         if (!filters || !popup || !keepsRunning) throw new InvalidOperationException("Desktop smoke checks failed.");

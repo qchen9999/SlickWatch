@@ -15,4 +15,5 @@
 *.icns binary
 *.sh text eol=lf
 *.swift text eol=lf
+*.m text eol=lf
 *.desktop text eol=lf

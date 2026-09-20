@@ -10,7 +10,7 @@ internal static class MacReopenCheck
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate int ApplicationAction();
 
-    internal static async Task RunAsync(MainWindow window, string libraryPath, string captures)
+    internal static async Task RunAsync(MainWindow window, TrayIcon tray, string libraryPath, string captures)
     {
         nint library = NativeLibrary.Load(Path.GetFullPath(libraryPath));
         try
@@ -22,6 +22,13 @@ internal static class MacReopenCheck
             var evidence = new List<string>();
             try
             {
+                if (close(handle) != 1) throw new InvalidOperationException("Native red close button was not found.");
+                await WaitUntilAsync(() => !window.IsVisible && visible(handle) == 0);
+                var open = tray.Menu!.Items.OfType<NativeMenuItem>().Single(item => item.Header == "Open SlickWatch");
+                // Enter at the same managed boundary used by the native menu exporter.
+                ((INativeMenuItemExporterEventsImplBridge)open).RaiseClicked();
+                await WaitUntilAsync(() => window.IsVisible && visible(handle) == 1);
+                evidence.Add("Open SlickWatch menu callback reopened the native window.");
                 // A second cycle catches handlers accidentally detached on close.
                 for (int cycle = 1; cycle <= 2; cycle++)
                 {

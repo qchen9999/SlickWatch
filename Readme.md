@@ -9,7 +9,7 @@ Build the app using the instructions below. Published builds include the .NET ru
 | Platform | Start | Background behavior |
 | --- | --- | --- |
 | Windows x64 | `artifacts/win-x64/SlickWatch.exe` | Closing or minimizing hides the window in the tray. |
-| macOS Apple Silicon | `artifacts/osx-arm64/SlickWatch.app` | Closing hides the window; use the menu bar icon to reopen. |
+| macOS Apple Silicon | `artifacts/osx-arm64/SlickWatch.app` | Closing hides the window; click the Dock icon or choose **Open SlickWatch** from the menu bar icon to reopen. |
 | macOS Intel | `artifacts/osx-x64/SlickWatch.app` | Same application; separate Intel build. |
 | Linux x64 | `artifacts/linux-x64/SlickWatch` | Closing minimizes to the task switcher; the tray icon appears on desktops that support it. |
 
@@ -90,6 +90,8 @@ Open `SlickWatch.slnx` in a compatible IDE. The build script disables workload r
 ## Verification
 
 GitHub Actions builds the Windows, Linux and macOS packages, runs behavior checks, and launches the desktop app for offline smoke checks. Reports and screenshots are uploaded as separate artifacts. Checks exercise search, feed filters, saved views, sorting, pagination, preferences, popups and dashboard close behavior. Mac checks decode the packaged ICNS file and verify that Finder's native icon lookup returns the radar artwork. Linux checks inspect the real X11 window icon and window class, validate the installed desktop entry, and launch it from a path with spaces and special characters. Linux CI uses a virtual X display, so tray/menu interaction still needs a real desktop check.
+
+Mac smoke checks also invoke the native red close button and Cocoa's Dock reopen callback, verifying that the existing window reappears across repeated cycles. The menu bar's **Open SlickWatch** callback is checked separately. The native test bridge is built only for CI checks and is excluded from downloadable app packages.
 
 The Windows ICO is the source artwork. `packaging/export-icons.ps1` converts it to the checked-in PNG and ICNS formats on Windows; normal builds need no image tools. macOS and Linux load PNG for the window/tray icon. The Mac bundle icon is copied before signing, and Linux packages include the PNG, desktop-entry template and installer.
 
